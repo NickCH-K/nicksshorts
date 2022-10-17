@@ -62,6 +62,7 @@ labeled_bar = function(dat, xvar, yvar, yscale = scales::label_number(big.mark =
 #' @param fillcolor The color of the bars.
 #' @param highlight Set of categories to highlight
 #' @param highlightcolor The color of the highlighted bars
+#' @param colormap Skip \code{fillcolor} and the highlight stuff and color the bars according to this color palette. No, there's no default palette.
 #' @param limits y-axis limits on the graph, usually to make it taller so as to fit the text.
 #' @param cis Show confidence intervals
 #' @param hjust Horizontal justification for the mean labels
@@ -72,8 +73,11 @@ labeled_bar = function(dat, xvar, yvar, yscale = scales::label_number(big.mark =
 #'
 #' @export
 dynamite_plot = function(dat_orig, xvar, yvar, yscale = scales::label_number(big.mark = ','), fillcolor = 'lightblue',
-                       highlight = NULL, highlightcolor = 'firebrick',
+                       highlight = NULL, highlightcolor = 'firebrick', colormap = NULL,
                        limits = NULL, cis = TRUE, hjust = ifelse(cis == TRUE, 1.5, .5), savedata = NULL) {
+  if (!is.null(highlight) & !is.null(colormap)) {
+    stop('Can\'t specify both highlight and colormap.')
+  }
   dat = copy(dat_orig)
   data.table::setDT(dat)
   data.table::setnames(dat, yvar, 'OUTCOME')
@@ -89,9 +93,14 @@ dynamite_plot = function(dat_orig, xvar, yvar, yscale = scales::label_number(big
   rdate[[xvar]] = factor(rdate[[xvar]])
 
 
-  if (is.null(highlight)) {
+  if (is.null(highlight) & is.null(colormap)) {
     p = ggplot2::ggplot(rdate, ggplot2::aes_string(x = xvar, y = 'Y', ymin = 'cibot', ymax = 'citop')) +
       ggplot2::geom_col(fill = fillcolor, size = 1)
+  } else if (!is.null(colormap)) {
+    p = ggplot2::ggplot(rdate, ggplot2::aes_string(x = xvar, y = 'Y', ymin = 'cibot', ymax = 'citop', fill = xvar)) +
+      ggplot2::geom_col(size = 1) +
+      ggplot2::scale_fill_manual(values = colormap) +
+      ggplot2::guides(fill = 'none')
   } else {
     cats = sort(unique(rdate[[xvar]]))
     cats = c(highlight, levels(rdate[[xvar]])[cats[!(cats %in% highlight)]])
@@ -104,14 +113,9 @@ dynamite_plot = function(dat_orig, xvar, yvar, yscale = scales::label_number(big
       ggplot2::guides(fill = 'none')
   }
 
-  if (cis == TRUE) {
-    p = p + ggplot2::geom_errorbar(width = .1) +
-      ggplot2::geom_text(ggplot2::aes(label = yscale(Y)), vjust = -.5, hjust = hjust,
-                         family = 'serif', size = 13/ggplot2::.pt)
-  } else {
-    p = p + ggplot2::geom_text(ggplot2::aes(label = yscale(Y)), vjust = -.5,
-                               family = 'serif', size = 13/ggplot2::.pt)
-  }
+  p = p + ggplot2::geom_errorbar(width = .1) +
+    ggplot2::geom_text(ggplot2::aes(label = yscale(Y), y = max(Y)/8), vjust = -.5, hjust = hjust,
+                       family = 'serif', size = 13/ggplot2::.pt)
 
   p = p +
     theme_nick() +
