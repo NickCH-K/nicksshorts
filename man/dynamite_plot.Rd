@@ -12,6 +12,7 @@ dynamite_plot(
   fillcolor = "lightblue",
   highlight = NULL,
   highlightcolor = "firebrick",
+  colormap = NULL,
   limits = NULL,
   cis = TRUE,
   hjust = ifelse(cis == TRUE, 1.5, 0.5),
@@ -30,6 +31,8 @@ dynamite_plot(
 \item{highlight}{Set of categories to highlight}
 
 \item{highlightcolor}{The color of the highlighted bars}
+
+\item{colormap}{Skip \code{fillcolor} and the highlight stuff and color the bars according to this color palette. No, there's no default palette.}
 
 \item{limits}{y-axis limits on the graph, usually to make it taller so as to fit the text.}
 
