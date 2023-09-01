@@ -17,11 +17,10 @@ Imports:
     knitr,
     lubridate,
     scales,
-    rgdal,
     broom,
-    rgeos,
     dplyr,
     tidytext,
-    fixest
+    fixest,
+    stringr
 Depends: 
     R (>= 4.2)

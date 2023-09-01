@@ -29,5 +29,5 @@ us_hex_map(
 \item{grad_low, grad_mid, grad_high}{Colors to use for gradient intensity. \code{grad_mid} is optional.}
 }
 \description{
-Creates a hexgrid map of the United States.
+Creates a hexgrid map of the United States. CURRENTLY NOT WORKING DUE TO RETIREMENT OF RGEOS AND RGDAL
 }

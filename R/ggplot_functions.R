@@ -355,7 +355,7 @@ line_w_ribbon = function(dat_orig, xvar, yvar, colorvar = NULL, yscale = scales:
 
 #' Hexgrid US State Map
 #'
-#' Creates a hexgrid map of the United States.
+#' Creates a hexgrid map of the United States. CURRENTLY NOT WORKING DUE TO RETIREMENT OF RGEOS AND RGDAL
 #'
 #' @param dat_orig Data
 #' @param stvar Column name with the two-letter state code in it.
@@ -367,6 +367,7 @@ line_w_ribbon = function(dat_orig, xvar, yvar, colorvar = NULL, yscale = scales:
 #' @export
 us_hex_map = function(dat_orig, stvar, yvar, yscale = scales::label_number(big.mark = ','), na.include = TRUE,
                       grad_low = '#56B1F7', grad_mid = NULL, grad_high = '#C0C0C0') {
+  stop('THIS FUNCTION CURRENTLY NOT WORKING DUE TO RETIREMENT OF RGEOS')
   data("spdf_fortified")
   data("centers")
   dat = copy(dat_orig)
@@ -395,4 +396,67 @@ us_hex_map = function(dat_orig, stvar, yvar, yscale = scales::label_number(big.m
     p = p + ggplot2::scale_fill_gradient2(trans = 'reverse', high = grad_high, low = grad_low, mid = grad_mid)
   }
   return(p)
+}
+
+#' Numeric Labeling Across a Wide Range
+#'
+#' Applies scales::comma labeling. Chooses appropriate scaling and adds a suffix separately for sub-1000, 1k-1M, 1M-1B, 1B-1T, 1T+ Above 1T keeps reporting trillions.
+#'
+#' \code{label_rangescale()} returns a version of the \code{rangescale} function with the appropriate options selected, like the other \code{label_} functions in the scales package.
+#'
+#' @param x Data.
+#' @param accuracy For the most part, see \code{scales::comma}. However, this also accepts a vector of options. If a vector is set, it will apply that value to the sub-1000, 1k-1M, 1M-1B, 1B-1T options, in that order. If fewer than five options are set, the last option will be copied forward (so \code{c(.1, 1)} will give an accuracy of .1 to sub-1k and 1 to the rest).
+#' @param prefix,big.mark,decimal.mark,trim,... See \code{scales::comma}. Note suffix and scale cannot be set, and accuracy default is now 1.
+#' @examples
+#'
+#' # Example data
+#' rangescale(c(400, 4000, 4200000, 4300000000))
+#' rangescale(c(400, 4000, 4200000, 4300000000), accuracy = c(1, .1))
+#' my_range_fcn = label_rangescale(accuracy = c(1, .1))
+#' my_range_fcn(c(400, 4000, 4200000, 4300000000))
+#'
+#' @rdname rangescale
+#' @export
+rangescale = function(x, accuracy = 1, prefix = '',
+                      big.mark = ',', decimal.mark = '.', trim = TRUE, ...) {
+  acc_l = length(accuracy)
+  if (acc_l < 5) {
+    accuracy = c(accuracy, rep(accuracy[acc_l], 5 - acc_l))
+  }
+  data.table::fcase(abs(x) < 1000, scales::comma(x, accuracy = accuracy[1], scale = 1,
+                                                 prefix = prefix, suffix = '',
+                                                 big.mark = big.mark,
+                                                 decimal.mark = decimal.mark,
+                                                 trim = trim, ...),
+                    abs(x) < 1000000, scales::comma(x, accuracy = accuracy[2], scale = 1/1000,
+                                                    prefix = prefix, suffix = 'k',
+                                                    big.mark = big.mark,
+                                                    decimal.mark = decimal.mark,
+                                                    trim = trim, ...),
+                    abs(x) < 1000000000, scales::comma(x, accuracy = accuracy[3], scale = 1/1000000,
+                                                   prefix = prefix, suffix = 'M',
+                                                   big.mark = big.mark,
+                                                   decimal.mark = decimal.mark,
+                                                   trim = trim, ...),
+                    abs(x) < 1000000000000, scales::comma(x, accuracy = accuracy[4], scale = 1/1000000000,
+                                                   prefix = prefix, suffix = 'B',
+                                                   big.mark = big.mark,
+                                                   decimal.mark = decimal.mark,
+                                                   trim = trim, ...),
+                    !is.na(x), scales::comma(x, accuracy = accuracy[5], scale = 1/1000000000000,
+                                             prefix = prefix, suffix = 'T',
+                                             big.mark = big.mark,
+                                             decimal.mark = decimal.mark,
+                                             trim = trim, ...))
+}
+
+#' @rdname rangescale
+#' @export
+label_rangescale = function(accuracy = 1, prefix = '',
+                            big.mark = ',', decimal.mark = '.', trim = TRUE, ...) {
+  function(x) {
+    rangescale(x, accuracy = accuracy, prefix = prefix,
+               big.mark = big.mark, decimal.mark = decimal.mark,
+               trim = trim, ...)
+  }
 }

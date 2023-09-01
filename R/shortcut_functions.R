@@ -214,4 +214,76 @@ linear_slope = function(dat = NULL, formula = NULL, y = NULL, x = NULL, se = FAL
   return(res)
 }
 
+#' Subset a string up to (or after) a marker substring
+#'
+#' This takes a string (or vector of strings) and looks for the first regex match. Then, it returns the content of that string up to that match (or following the match, as desired).
+#'
+#' It's called \code{str_eat} because you often use it on messy string data, "eating" it from the left as you chomp it piece by piece into processed pieces.
+#'
+#' @param string Input vector. Either a character vector, or something coercible to one.
+#' @param pattern Pattern to look for. See \code{stringr::str_locate} for more details.
+#' @param keep Do you want the text to the 'left' of the match, the 'match' itself, or to the 'right' of the match? Accepts a vector to keep multiple options.
+#' @param direction Look for the first match coming from the 'left' or the 'right'?
+#' @param trim Apply a \code{stringr::str_trim()} after getting the substring.
+#' @param keep_nonmatch Set to 'full' to return the original string if the match isn't found. Set to 'blank' to return a blank string if no match is found. Set to 'NA' to return a missing value if no match is found.
+str_eat = function(string, pattern, keep = 'left',
+                   direction = 'left', trim = FALSE, keep_nonmatch = 'blank') {
 
+  if (sum(c('left','right') %in% keep) == 2) {
+    stop('left and right can\'t both be in keep')
+  }
+  keep = keep[keep %in% c('left','right','match')]
+  if (length(keep) == 0) {
+    stop('Invalid keep values. Must be some mix of left, right, and match.')
+  }
+
+  if (direction == 'left') {
+    matches = data.table::data.table(stringr::str_locate(string, pattern))
+  } else if (direction == 'right') {
+    matches = stringr::str_locate_all(string, pattern)
+    matches = data.table::rbindlist(
+      lapply(matches, function(x) if(nrow(x) == 0) {
+        data.table::data.table(start = NA, end = NA)
+        } else { data.table::data.table(tail(x, 1)) })
+    )
+  } else { stop('direction must be left or right.')}
+
+
+  if ('left' %in% keep) {
+    starts = rep(1, length(string))
+  } else if ('match' %in% keep) {
+    starts = matches$start
+  } else {
+    starts = matches$end + 1
+  }
+
+  if ('right' %in% keep) {
+    ends = rep(-1, length(string))
+  } else if ('match' %in% keep) {
+    ends = matches$end
+  } else {
+    ends = matches$start - 1
+  }
+
+  string_sub = stringr::str_sub(string, starts, ends)
+
+  if (trim) {
+    string_sub = stringr::str_trim(string_sub)
+  }
+
+  if (keep_nonmatch == 'full') {
+    string_sub = data.table::fifelse(is.na(matches$start),
+                                     string,
+                                     string_sub)
+  } else if (keep_nonmatch == 'blank') {
+    string_sub = data.table::fifelse(is.na(matches$start),
+                                     '',
+                                     string_sub)
+  } else if (keep_nonmatch == 'NA') {
+    string_sub = data.table::fifelse(is.na(matches$start),
+                                     NA_character_,
+                                     string_sub)
+  } else { stop('Invalid keep_nonmatch value. Must be full, blank, or NA.')}
+
+  return(string_sub)
+}
