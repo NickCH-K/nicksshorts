@@ -226,6 +226,7 @@ linear_slope = function(dat = NULL, formula = NULL, y = NULL, x = NULL, se = FAL
 #' @param direction Look for the first match coming from the 'left' or the 'right'?
 #' @param trim Apply a \code{stringr::str_trim()} after getting the substring.
 #' @param keep_nonmatch Set to 'full' to return the original string if the match isn't found. Set to 'blank' to return a blank string if no match is found. Set to 'NA' to return a missing value if no match is found.
+#' @export
 str_eat = function(string, pattern, keep = 'left',
                    direction = 'left', trim = FALSE, keep_nonmatch = 'blank') {
 
@@ -286,4 +287,66 @@ str_eat = function(string, pattern, keep = 'left',
   } else { stop('Invalid keep_nonmatch value. Must be full, blank, or NA.')}
 
   return(string_sub)
+}
+
+
+#' Subset a string up from one marker substring to the next
+#'
+#' This takes a string (or vector of strings) and looks for the first regex match. Then, it returns the content of that string up to the next match.
+#'
+#' @param string Input vector. Either a character vector, or something coercible to one.
+#' @param pattern_first Pattern to look for. See \code{stringr::str_locate} for more details.
+#' @param pattern_second Second pattern to look for. See \code{stringr::str_locate} for more details.
+#' @param keep Do you want the text to the 'between' the matches, the 'first' match, or the 'second' match? Accepts a vector to keep multiple options.
+#' @param trim Apply a \code{stringr::str_trim()} after getting the substring.
+#' @param keep_nonmatch Set to 'full' to return the original string if the match isn't found. Set to 'blank' to return a blank string if no match is found. Set to 'NA' to return a missing value if no match is found.
+#' @export
+str_between = function(string, pattern_first, pattern_second, keep = 'between',
+                   trim = FALSE, keep_nonmatch = 'blank') {
+
+  keep = keep[keep %in% c('first','second','between')]
+  if (length(keep) == 0) {
+    stop('Invalid keep values. Must be some mix of first, second, and between.')
+  }
+
+  matches = data.table::data.table(stringr::str_locate(string, pattern_first))
+
+  first_pattern = stringr::str_extract(string, pattern_first)
+
+  string_r = stringr::str_sub(string, matches$end+1)
+
+  matches = data.table::data.table(stringr::str_locate(string_r, pattern_second))
+
+  if ('first' %in% keep) {
+    str_match = first_pattern
+  } else {
+    str_match = rep('',length(string))
+  }
+  miss_rows = is.na(first_pattern)
+
+  if ('between' %in% keep) {
+    between_pattern = stringr::str_sub(string_r, 1, matches$start - 1)
+    str_match = paste0(str_match, between_pattern)
+    miss_rows = miss_rows | is.na(between_pattern)
+  }
+
+  if ('right' %in% keep) {
+    second_pattern = stringr::str_extract(string_r, pattern_second)
+    str_match = paste0(str_match, second_pattern)
+    miss_rows = miss_rows | is.na(second_pattern)
+  }
+
+  if (trim) {
+    str_match = stringr::str_trim(str_match)
+  }
+
+  if (keep_nonmatch == 'full') {
+    str_match[miss_rows] = string
+  } else if (keep_nonmatch == 'blank') {
+    str_match[miss_rows] = ''
+  } else if (keep_nonmatch == 'NA') {
+    str_match[miss_rows] = NA_character_
+  } else { stop('Invalid keep_nonmatch value. Must be full, blank, or NA.')}
+
+  return(str_match)
 }
